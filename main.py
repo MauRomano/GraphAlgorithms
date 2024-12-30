@@ -1,22 +1,68 @@
-# matriz de adjacencias
+"""
+Subject: Graph algorithm
+
+"""
+
+import numpy as np
+
 class Vertice:
     BRANCO = 1
     CINZA = 2
     PRETO = 3
     INF = 99999
+
     def __init__(self, id):
         self.id = id
         self.adj = []
+        self.adjWeight = []
         self.d = self.INF
         self.cor = self.BRANCO
         self.tempoInicial = None
         self.tempoFinal = None
+
+    def addAdj(self, id, weight = 1):
+        self.adj.append(id)
+        self.adjWeight.append(weight)
 
 class Grafo:
     def __init__(self, vertList, s=0):
         self.verticeInicial = s
         self.vertices = vertList
         self.tempo = 0
+
+    def _vazio (self, Q):
+        for i in range (len(Q)):
+            if Q[i] == 1:
+                return False
+        return True
+
+    def _insere (self, Q, i):
+        Q[i] = 1
+
+    def _minimo (self, Q, chave):
+        for i in range (len(Q)):
+            if Q[i] == 1:
+                min = i
+                break
+        for i in range (len(Q)):
+            if Q[i] == 1  and chave[i] < chave[min]:
+                min = i
+        return min   #devolve indice de um vertice
+
+    def _extraiMinimo (self, Q, chave):
+        for i in range (len(Q)):
+            if Q[i] == 1:
+                min = i
+                break
+        for i in range (len(Q)):
+            if Q[i] == 1  and chave[i] < chave[min]:
+                min = i
+        Q[min] = 0
+        return min   #devolve indice de um vertice
+
+    def _busca (self, Q, v):
+        return Q[v]
+
 
     def sortVerticesBy(self, param, rev = False):
         if param == 0:
@@ -27,7 +73,6 @@ class Grafo:
             sortVertices = sorted(self.vertices, key=lambda x: x.id, reverse=rev)
         elif param == 2:
             #Sort by Tempo Final
-            print("Sorting by tempo final")
             sortVertices = sorted(self.vertices, key=lambda x: x.tempoFinal, reverse=rev)
 
         self.vertices = sortVertices
@@ -35,7 +80,7 @@ class Grafo:
 
     def showGrafo(self):
         for v in self.vertices:
-            strAdj = " ".join([str(x) for x in v.adj])
+            strAdj = " ".join([str(x[0])+"("+str(x[1])+")" for x in zip(v.adj, v.adjWeight)])
             print(f"{v.id}: {strAdj}")
         pass
 
@@ -46,10 +91,6 @@ class Grafo:
                 v = vl
                 break
         return v
-
-
-    def returnMatrix(self):
-        pass
 
     def resetCor(self):
         for v in self.vertices:
@@ -94,26 +135,19 @@ class Grafo:
         self.tempo = self.tempo + 1
         u.tempoInicial = self.tempo
         u.cor = Vertice.CINZA
-        print(f"{u.id}: {u.tempoInicial}")
-        print(u.adj)
         for v in [self.returnVerticeById(x) for x in u.adj]:
-            print(u.id, v.id)
-            print(v.adj)
             if v.cor == Vertice.BRANCO:
                 self.visitaDFS(v)
         self.tempo = self.tempo + 1
         u.tempoFinal = self.tempo
-        print(f"{u.id}: {u.tempoFinal}")
         u.cor = Vertice.PRETO
 
     def dfs(self):
         self.resetTempo()
         self.resetCor()
         ol = [x.id for x in self.vertices]
-        print(ol)
         for u in self.vertices:
             if u.cor == Vertice.BRANCO:
-                print(u.id)
                 self.visitaDFS(u)
         tiList = [v.tempoInicial for v in self.vertices] 
         tfList = [v.tempoFinal for v in self.vertices] 
@@ -131,8 +165,9 @@ class Grafo:
         verticeListTransposto = [Vertice(v.id) for v in self.vertices]
         grafoTransposto = Grafo(verticeListTransposto)
         for v in self.vertices:
-            for vAdj in v.adj:
-                grafoTransposto.vertices[vAdj].adj.append(v.id)
+            for vAdj, vAdjWeight in zip(v.adj, v.adjWeight):
+                grafoTransposto.vertices[vAdj].addAdj(v.id, vAdjWeight)
+        grafoTransposto.showGrafo()
         return grafoTransposto
 
     def fortementeConectados(self):
@@ -145,14 +180,82 @@ class Grafo:
         grafoT.dfs()
         return grafoT.parentesisExpression()
 
+    def dijkstra(self, idVerticeInical=None):
+        if idVerticeInical is None:
+            vi = self.vertices[grafo.verticeInicial]
+        else:
+            vi = self.vertices[idVerticeInical]
+        n = len(self.vertices)
+        INF = 999999
+        NIL = -1
+        d = [0]*n
+        pi = [0]*n
+        for i in range(0, len(self.vertices)):
+            d[i] = INF
+            pi[i] = NIL
+        d[vi.id] = 0
+        Q = [1]*n
+
+        while not self._vazio(Q):
+            u = self.vertices[self._extraiMinimo(Q,d)]
+            for v, weight in zip(u.adj, u.adjWeight): 
+                if weight>0:
+                    if d[u.id] + weight < d[v]:
+                        d[v] = d[u.id] + weight
+                        pi[v] = u.id
+        return d, pi
+
+    def floydWarshall(self):
+        INF = 999999
+        NIL = -1
+        n=len(self.vertices)
+        matrizAdj = [[INF for col in range(n)] for row in range(n)]
+        for i in range (0, n):
+            matrizAdj[i][i] = 0
+        for u in self.vertices:
+            for v, weight in zip(u.adj, u.adjWeight):
+                matrizAdj[u.id][v] = weight
+                # distancias: "vetor" de matriz
+        d = [np.copy(matrizAdj), np.copy(matrizAdj)]
+        # for i in range (0, n):
+        #     saida = ""
+        #     for j in range (0, n):
+        #         if matrizAdj[i][j] >= INF:
+        #             saida += "INF "
+        #         else:
+        #             saida += "%d " % matrizAdj[i][j]
+        #     print (saida)
+        tmp = [[NIL for col in range(n)] for row in range(n)]
+        for i in range (0, n):
+            for j in range (0, n):
+                if matrizAdj[i][j] < INF:
+                    tmp[i][j] = i
+        for i in range (0, n):
+            tmp[i][i] = NIL
+        pi = [np.copy(tmp), np.copy(tmp)]
+
+        for k in range(1, n+1):
+            for i in range(n):
+                for j in range(n):
+                    d[k%2][i][j] = d[(k-1)%2][i][j]
+                    pi[k%2][i][j] = pi[(k-1)%2][i][j]
+                    if d[(k-1)%2][i][k-1] + d[(k-1)%2][k-1][j] < d[(k-1)%2][i][j]:
+                        d[k%2][i][j] = d[(k-1)%2][i][k-1] + d[(k-1)%2][k-1][j]
+                        pi[k%2][i][j] = pi[(k-1)%2][k-1][j]
+
+        return d[n%2], pi[n%2]
+
 
 if __name__ == '__main__':
     ### Inicialização
     n, m = (int(tmp) for tmp in input().split(" "))
+    s=0
     vertList = [Vertice(id) for id in range(n)]
-    grafo = Grafo(vertList)
+    grafo = Grafo(vertList, s)
     for k in range(m):
-        i, j = (int(tmp) for tmp in input().split(" "))
-        grafo.vertices[i].adj.append(j)
-    print(grafo.fortementeConectados())
+        i, j, weight = (int(tmp) for tmp in input().split(" "))
+        grafo.vertices[i].addAdj(j, weight)
+    d, pi = grafo.floydWarshall()
+    print(d)
+    print(pi)
 
